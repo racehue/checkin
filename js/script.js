@@ -27,10 +27,6 @@ function checkInByPhone() {
         return;
     }
     showLoading();
-    // google.script.run
-    //   .withSuccessHandler(showResult)
-    //   .withFailureHandler(showError)
-    //   .processCheckIn(phone);
     processCheckIn(phone, null);
 }
 
@@ -41,10 +37,6 @@ function checkInByName() {
         return;
     }
     showLoading();
-    // google.script.run
-    //   .withSuccessHandler(showResult)
-    //   .withFailureHandler(showError)
-    //   .processCheckInByName(name);
     processCheckIn(null, name);
 }
 
@@ -53,18 +45,20 @@ async function processCheckIn(phone, name) {
   let id = null;
   if(phone != null){
     showResult('Đang xử lý check-in bằng số điện thoại...');
+    id = phone;
   } else{
     showResult('Đang xử lý check-in bằng tên...');
+    id = name;
   }
   
-    
+
     // Gửi yêu cầu POST tới Apps Script
     try {
         // Tạo payload
         const postData = {
             action: ACTION_CHECKIN,
-            phone: phone,  // Gửi số điện thoại (nếu có)
-            name: name      // Gửi tên (nếu có)
+            id: id // ,  // Gửi số điện thoại (nếu có)
+            // name: name      // Gửi tên (nếu có)
         };
 
         const response = await fetch(WEBAPP_URL, {
