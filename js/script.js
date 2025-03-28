@@ -61,6 +61,10 @@ async function processCheckIn(phone, name) {
             redirect: 'follow'
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
         const responseData = await response.json();
         if (responseData.success) {
             showResult(responseData.message);
@@ -113,6 +117,10 @@ async function fetchData() {
             redirect: 'follow'
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
         const responseData = await response.json();
         if (responseData.success) {
             updateUIWithData(responseData.data);
@@ -156,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function showLoading() {
     document.getElementById('result').innerHTML =
-        '<div style="text-align: center; padding: 20px;"><p><i class="fas fa-spinner fa-spin"></i> Đang xử lý...</p></div>';
+        '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></div>';
     document.getElementById('result').style.display = 'block';
 }
 
