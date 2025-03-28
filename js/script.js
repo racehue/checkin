@@ -1,5 +1,5 @@
 // --- Configuration ---
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxb283R_Iqs8Awg1zKCRKwetAC0oEONInlZvA-v56h0AF9_rU4WZ1QYKMqKvK-Tbi_1/exec'; // Thay thế bằng URL Web App thực tế của bạn
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxb283R_Iqs8Awg1zKCRKwetAC0oEONInlZvA-v56h0AF9_rU4WZ1QYKMqKvK-Tbi_1/exec'; // Replace with your actual Web App URL
 
 // Constants for Actions
 const ACTION_CHECKIN = "checkin";
@@ -7,6 +7,11 @@ const ACTION_COMMIT = "commit";
 
 // --- Global State ---
 let qrScanner = null;
+let isNetworkRequestInProgress = false;
+let networkErrorCount = 0;
+const MAX_NETWORK_ERRORS = 3;
+const FETCH_INTERVAL = 5000; // 5 seconds
+const NETWORK_TIMEOUT = 10000; // 10 seconds timeout
 
 function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(function (el) {
@@ -50,16 +55,22 @@ async function processCheckIn(phone, name) {
             time: new Date().toISOString()
         };
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), NETWORK_TIMEOUT);
+
         const response = await fetch(WEBAPP_URL, {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',
+            signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(postData),
             redirect: 'follow'
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
@@ -68,11 +79,30 @@ async function processCheckIn(phone, name) {
         const responseData = await response.json();
         if (responseData.success) {
             showResult(responseData.message);
+            networkErrorCount = 0; // Reset error count on successful request
         } else {
             showError(responseData.error);
         }
     } catch (error) {
-        showError('Lỗi: ' + error.message);
+        handleNetworkError(error);
+    }
+}
+
+function handleNetworkError(error) {
+    networkErrorCount++;
+    
+    let errorMessage = 'Lỗi: ' + error.message;
+    
+    if (error.name === 'AbortError') {
+        errorMessage = 'Yêu cầu mạng đã hết thời gian chờ. Vui lòng kiểm tra kết nối.';
+    }
+
+    showError(errorMessage);
+
+    // If we've exceeded max network errors, stop attempting to fetch
+    if (networkErrorCount >= MAX_NETWORK_ERRORS) {
+        showError('Quá nhiều lỗi mạng. Vui lòng kiểm tra kết nối internet.');
+        stopPeriodicFetch();
     }
 }
 
@@ -99,23 +129,53 @@ function showError(error) {
     resultDiv.style.display = 'block';
 }
 
+let fetchIntervalId = null;
+
+function startPeriodicFetch() {
+    // If there's an existing interval, clear it first
+    if (fetchIntervalId) {
+        clearInterval(fetchIntervalId);
+    }
+
+    // Start a new interval
+    fetchIntervalId = setInterval(fetchData, FETCH_INTERVAL);
+}
+
+function stopPeriodicFetch() {
+    if (fetchIntervalId) {
+        clearInterval(fetchIntervalId);
+        fetchIntervalId = null;
+    }
+}
+
 async function fetchData() {
-    showLoading();
+    // Prevent multiple simultaneous fetch requests
+    if (isNetworkRequestInProgress) return;
+
     try {
+        isNetworkRequestInProgress = true;
+        showLoading();
+
         const postData = {
             action: ACTION_COMMIT
         };
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), NETWORK_TIMEOUT);
 
         const response = await fetch(WEBAPP_URL, {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',
+            signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(postData),
             redirect: 'follow'
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
@@ -124,16 +184,19 @@ async function fetchData() {
         const responseData = await response.json();
         if (responseData.success) {
             updateUIWithData(responseData.data);
+            networkErrorCount = 0; // Reset error count on successful request
         } else {
             showError(responseData.error || "Không thể lấy dữ liệu từ máy chủ.");
         }
     } catch (error) {
-        showError('Lỗi mạng: ' + error.message);
+        handleNetworkError(error);
+    } finally {
+        isNetworkRequestInProgress = false;
+        hideLoading();
     }
 }
 
 function updateUIWithData(data) {
-    hideLoading();
     var resultDiv = document.getElementById('result');
     resultDiv.innerHTML = `
         <div class="success-result">
@@ -144,9 +207,13 @@ function updateUIWithData(data) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Initial data fetch
     fetchData();
-    setInterval(fetchData, 5000);
 
+    // Start periodic fetching with error handling
+    startPeriodicFetch();
+
+    // Add Enter key event listeners
     document.getElementById('phoneNumber').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -164,10 +231,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function showLoading() {
     document.getElementById('result').innerHTML =
-        '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></div>';
+        '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
     document.getElementById('result').style.display = 'block';
 }
 
 function hideLoading() {
-    // You can add more sophisticated loading indicators if needed
+    // Optional: Add more sophisticated loading handling if needed
 }
