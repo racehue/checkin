@@ -1,6 +1,5 @@
 // --- Configuration ---
-// !!! QUAN TRỌNG: Thay thế bằng URL Web App thực tế của bạn sau khi triển khai Apps Script !!!
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxb283R_Iqs8Awg1zKCRKwetAC0oEONInlZvA-v56h0AF9_rU4WZ1QYKMqKvK-Tbi_1/exec';
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxb283R_Iqs8Awg1zKCRKwetAC0oEONInlZvA-v56h0AF9_rU4WZ1QYKMqKvK-Tbi_1/exec'; // Thay thế bằng URL Web App thực tế của bạn
 
 // Constants for Actions
 const ACTION_CHECKIN = "checkin";
@@ -40,25 +39,15 @@ function checkInByName() {
     processCheckIn(null, name);
 }
 
-// Hàm mới để xử lý checkin (thay thế processCheckIn và processCheckInByName)
 async function processCheckIn(phone, name) {
-  let id = null;
-  if(phone != null){
-    showResult('Đang xử lý check-in bằng số điện thoại...');
-    id = phone;
-  } else{
-    showResult('Đang xử lý check-in bằng tên...');
-    id = name;
-  }
-  
+    let id = phone || name;
 
-    // Gửi yêu cầu POST tới Apps Script
+    showResult('Đang xử lý check-in...');
     try {
-        // Tạo payload
         const postData = {
             action: ACTION_CHECKIN,
-            id: id // ,  // Gửi số điện thoại (nếu có)
-            // name: name      // Gửi tên (nếu có)
+            id: id,
+            time: new Date().toISOString()
         };
 
         const response = await fetch(WEBAPP_URL, {
@@ -72,17 +61,13 @@ async function processCheckIn(phone, name) {
             redirect: 'follow'
         });
 
-        // Kiểm tra kết quả trả về
         const responseData = await response.json();
         if (responseData.success) {
-            // Hiển thị thông báo thành công
             showResult(responseData.message);
         } else {
-            // Hiển thị thông báo lỗi
             showError(responseData.error);
         }
     } catch (error) {
-        // Xử lý lỗi mạng hoặc lỗi khác
         showError('Lỗi: ' + error.message);
     }
 }
@@ -90,11 +75,7 @@ async function processCheckIn(phone, name) {
 function showResult(html) {
     hideLoading();
     var resultDiv = document.getElementById('result');
-    // if(html.includes('success')) {
-    //   resultDiv.innerHTML = '<div class="success-result">' + html + '</div>';
-    // } else {
     resultDiv.innerHTML = html;
-    // }
     resultDiv.style.display = 'block';
     if (document.getElementById('phoneTabContent').classList.contains('active')) {
         document.getElementById('phoneNumber').value = '';
@@ -114,38 +95,50 @@ function showError(error) {
     resultDiv.style.display = 'block';
 }
 
-function openScanner() {
-    var scannerDiv = document.getElementById('scanner');
-    if (scannerDiv.style.display === 'none') {
-        scannerDiv.style.display = 'block';
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-            html5QrCode.stop().then((ignore) => {
-                document.getElementById('phoneNumber').value = decodedText;
-                checkInByPhone();
-                scannerDiv.style.display = 'none';
-            }).catch((err) => {
-                console.error("Lỗi khi dừng scanner:", err);
-            });
+async function fetchData() {
+    showLoading();
+    try {
+        const postData = {
+            action: ACTION_COMMIT
         };
-        const config = {
-            fps: 10,
-            qrbox: {
-                width: 250,
-                height: 250
-            }
-        };
-        html5QrCode.start({
-            facingMode: "environment"
-        }, config, qrCodeSuccessCallback);
-    } else {
-        scannerDiv.style.display = 'none';
+
+        const response = await fetch(WEBAPP_URL, {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(postData),
+            redirect: 'follow'
+        });
+
+        const responseData = await response.json();
+        if (responseData.success) {
+            updateUIWithData(responseData.data);
+        } else {
+            showError(responseData.error || "Không thể lấy dữ liệu từ máy chủ.");
+        }
+    } catch (error) {
+        showError('Lỗi mạng: ' + error.message);
     }
 }
 
-// Add event listeners for Enter key
+function updateUIWithData(data) {
+    hideLoading();
+    var resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = `
+        <div class="success-result">
+            <h3><i class="fas fa-check-circle"></i> Dữ liệu đã được đồng bộ</h3>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+        </div>`;
+    resultDiv.style.display = 'block';
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-    // For phone number input
+    fetchData();
+    setInterval(fetchData, 5000);
+
     document.getElementById('phoneNumber').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -153,19 +146,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // For participant name input
     document.getElementById('participantName').addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
             checkInByName();
         }
     });
-
-    //Gọi hàm fetchData lần đầu tiên khi trang load
-    // fetchData();
-
-    //Gọi hàm fetchData định kỳ (ví dụ: mỗi 5 giây) để đồng bộ dữ liệu 2 chiều
-    // setInterval(fetchData, 5000);
 });
 
 function showLoading() {
