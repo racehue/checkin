@@ -1,25 +1,26 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
+
 <head>
+    <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Check-in Giải Chạy Thủy Biều Jogging</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- CSS -->
+    <!-- Place your CSS file here -->
 </head>
+
 <body>
-    <!-- Background Overlays -->
     <div class="background-overlay"></div>
     <div class="gradient-overlay"></div>
 
-    <!-- Main Container -->
     <div class="container">
-        <!-- Flower Decorations -->
         <div class="flower-decoration flower-top-right"></div>
         <div class="flower-decoration flower-bottom-left"></div>
 
-        <!-- Header Section -->
         <header>
             <div class="header-icon">
                 <i class="fas fa-running"></i>
@@ -31,9 +32,7 @@
             </div>
         </header>
 
-        <!-- Main Card -->
         <div class="card">
-            <!-- Tabs -->
             <div class="tabs">
                 <div id="phoneTab" class="tab active" onclick="switchTab('phone')">
                     <i class="fas fa-phone-alt"></i> Check-in bằng SĐT
@@ -43,7 +42,6 @@
                 </div>
             </div>
 
-            <!-- Phone Tab Content -->
             <div id="phoneTabContent" class="tab-content active">
                 <div class="input-group">
                     <label for="phoneNumber">Nhập số điện thoại người tham gia:</label>
@@ -59,7 +57,6 @@
                 </div>
             </div>
 
-            <!-- Name Tab Content -->
             <div id="nameTabContent" class="tab-content">
                 <div class="input-group">
                     <label for="participantName">Nhập tên người tham gia:</label>
@@ -72,25 +69,24 @@
                 </div>
             </div>
 
-            <!-- Result Display -->
-            <div id="result" class="result-section"></div>
+            <div id="result"></div>
         </div>
 
-        <!-- QR Scanner -->
         <div class="card qr-scanner" id="scanner" style="display: none;">
             <h2><i class="fas fa-qrcode"></i> Quét mã QR</h2>
             <p>Đưa mã QR vào vùng quét bên dưới</p>
             <div id="qr-reader"></div>
         </div>
 
-        <!-- Footer -->
-        <footer>
+        <div class="footer">
             <p>© 2025 Hệ thống Check-in được thiết lập bởi HAT from Huew with Love</p>
-        </footer>
+        </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"></script>
-    <script src="js/script.js"></script>
+    <!-- Javascript -->
+    <script src="script.js"></script>
+    <!-- Place your Javascript file here -->
 </body>
+
 </html>
