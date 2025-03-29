@@ -30,10 +30,10 @@ async function loadData() {
             throw new Error('Không thể đọc header của sheet');
         }
         
-        const headers = headersData.values[0];
+        const headerRow = headersData.values[0];
         
         // Lưu trữ index của các cột quan trọng
-        headers.forEach((header, index) => {
+        headerRow.forEach((header, index) => {
             columnIndexes[header] = index;
         });
         
@@ -149,7 +149,8 @@ function processCheckIn(phone) {
     }
 }
 
-function switchTab(tabName) {
+// Đặt các function cần được sử dụng bởi HTML ở phạm vi toàn cục (window)
+window.switchTab = function(tabName) {
     document.querySelectorAll('.tab-content').forEach(function(el) {
         el.classList.remove('active');
     });
@@ -160,7 +161,7 @@ function switchTab(tabName) {
     document.getElementById(tabName + 'Tab').classList.add('active');
 }
 
-function checkInByPhone() {
+window.checkInByPhone = function() {
     var phone = document.getElementById('phoneNumber').value.trim();
     if (!phone) {
         alert('Vui lòng nhập số điện thoại!');
@@ -170,7 +171,7 @@ function checkInByPhone() {
     processCheckIn(phone);
 }
 
-function checkInByName() {
+window.checkInByName = function() {
     var name = document.getElementById('participantName').value.trim();
     if (!name) {
         alert('Vui lòng nhập tên người tham gia!');
@@ -197,7 +198,7 @@ function checkInByName() {
     }
 }
 
-function displayMultipleResults(results) {
+window.displayMultipleResults = function(results) {
     let html = `
     <div class="multiple-results">
       <p>Tìm thấy ${results.length} người tham gia phù hợp. Vui lòng chọn:</p>
@@ -220,7 +221,7 @@ function displayMultipleResults(results) {
     document.getElementById('result').style.display = 'block';
 }
 
-function selectParticipant(phone) {
+window.selectParticipant = function(phone) {
     processCheckIn(phone);
 }
 
@@ -247,7 +248,7 @@ function showError(error) {
     resultDiv.style.display = 'block';
 }
 
-function openScanner() {
+window.openScanner = function() {
     var scannerDiv = document.getElementById('scanner');
     if (scannerDiv.style.display === 'none' || !scannerDiv.style.display) {
         scannerDiv.style.display = 'block';
@@ -256,7 +257,7 @@ function openScanner() {
             const qrCodeSuccessCallback = (decodedText, decodedResult) => {
                 html5QrCode.stop().then((ignore) => {
                     document.getElementById('phoneNumber').value = decodedText;
-                    checkInByPhone();
+                    window.checkInByPhone();
                     scannerDiv.style.display = 'none';
                 }).catch((err) => {
                     console.error("Lỗi khi dừng scanner:", err);
@@ -299,13 +300,25 @@ function hideLoading() {
     // Có thể để trống hoặc thêm logic nếu cần
 }
 
+// Kiểm tra truy cập CORS
+async function checkCORSAccess() {
+    try {
+        const testUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1!A1?key=${API_KEY}`;
+        const response = await fetch(testUrl, { method: 'HEAD' });
+        return response.ok;
+    } catch (error) {
+        console.error('Lỗi kiểm tra CORS:', error);
+        return false;
+    }
+}
+
 // Add event listeners for Enter key
 document.addEventListener('DOMContentLoaded', function() {
     // For phone number input
     document.getElementById('phoneNumber').addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
             event.preventDefault();
-            checkInByPhone();
+            window.checkInByPhone();
         }
     });
 
@@ -313,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('participantName').addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
             event.preventDefault();
-            checkInByName();
+            window.checkInByName();
         }
     });
 
@@ -331,15 +344,3 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 });
-
-// Hàm kiểm tra truy cập CORS
-async function checkCORSAccess() {
-    try {
-        const testUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1!A1?key=${API_KEY}`;
-        const response = await fetch(testUrl, { method: 'HEAD' });
-        return response.ok;
-    } catch (error) {
-        console.error('Lỗi kiểm tra CORS:', error);
-        return false;
-    }
-}
