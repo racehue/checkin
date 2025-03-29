@@ -1,3 +1,28 @@
+let sheetData = []; // Lưu trữ dữ liệu từ Google Sheet
+const PHONE_COLUMN = 'tel'; // Tên cột chứa số điện thoại trong Google Sheet
+const NAME_COLUMN = 'Họ và tên'; // Tên cột chứa họ và tên trong Google Sheet
+let SPREADSHEET_ID = '1HpXAxuVVi7sMnHP6Jn8KwGStnr160XYBJ6CtZiH-bwQ'; // Lưu trữ ID của Google Sheet
+
+// Hàm để lấy dữ liệu từ Google Sheet
+function loadData() {
+    showLoading();
+    google.script.run
+        .withSuccessHandler(function (data) {
+            sheetData = data;
+            hideLoading();
+            console.log('Dữ liệu đã được tải:', sheetData);
+            // Kiểm tra xem dữ liệu có chứa SPREADSHEET_ID không
+            if (sheetData.length > 0 && sheetData[0].SPREADSHEET_ID) {
+                SPREADSHEET_ID = sheetData[0].SPREADSHEET_ID;
+                console.log('SPREADSHEET_ID đã được thiết lập:', SPREADSHEET_ID);
+            } else {
+                showError({ message: 'Không tìm thấy SPREADSHEET_ID trong dữ liệu.' });
+            }
+        })
+        .withFailureHandler(showError)
+        .getData();
+}
+
 function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(function (el) {
         el.classList.remove('active');
@@ -15,6 +40,15 @@ function checkInByPhone() {
         alert('Vui lòng nhập số điện thoại!');
         return;
     }
+
+    // Tìm kiếm trong dữ liệu đã tải
+    const participant = sheetData.find(item => item[PHONE_COLUMN] === phone);
+
+    if (!participant) {
+        alert('Không tìm thấy người tham gia với số điện thoại này!');
+        return;
+    }
+
     showLoading();
     google.script.run
         .withSuccessHandler(showResult)
@@ -28,11 +62,61 @@ function checkInByName() {
         alert('Vui lòng nhập tên người tham gia!');
         return;
     }
-    showLoading();
-    google.script.run
-        .withSuccessHandler(showResult)
-        .withFailureHandler(showError)
-        .processCheckInByName(name);
+
+    // Tìm kiếm trong dữ liệu đã tải (tìm kiếm gần đúng)
+    const searchResults = sheetData.filter(item =>
+        item[NAME_COLUMN].toLowerCase().includes(name.toLowerCase())
+    );
+
+    if (searchResults.length === 0) {
+        alert('Không tìm thấy người tham gia nào có tên chứa "' + name + '"!');
+        return;
+    }
+
+    if (searchResults.length === 1) {
+        // Nếu chỉ tìm thấy một kết quả, tiến hành check-in
+        const phone = searchResults[0][PHONE_COLUMN];
+        showLoading();
+        google.script.run
+            .withSuccessHandler(showResult)
+            .withFailureHandler(showError)
+            .processCheckIn(phone);
+    } else {
+        // Nếu tìm thấy nhiều kết quả, hiển thị danh sách để chọn
+        displayMultipleResults(searchResults);
+    }
+}
+
+function displayMultipleResults(results) {
+    let html = `
+    <div class="multiple-results">
+      <p>Tìm thấy ${results.length} người tham gia phù hợp. Vui lòng chọn:</p>
+      <ul>
+  `;
+
+    for (const result of results) {
+        html += `
+        <li onclick="selectParticipant('${result[PHONE_COLUMN]}')">
+          ${result[NAME_COLUMN]} (${result[PHONE_COLUMN]})
+        </li>
+    `;
+    }
+
+    html += `
+      </ul>
+    </div>
+    <script>
+      function selectParticipant(phone) {
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showError)
+          .processCheckIn(phone);
+      }
+    </script>
+  `;
+    document.getElementById('result').innerHTML = html;
+    document.getElementById('result').style.display = 'block';
+
 }
 
 function showResult(html) {
@@ -106,4 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
             checkInByName();
         }
     });
+
+    // Tải dữ liệu khi trang web được tải
+    loadData();
 });
