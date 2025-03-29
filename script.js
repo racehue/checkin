@@ -1,6 +1,6 @@
 // Cấu hình cho Google Sheets API
 const SPREADSHEET_ID = '1HpXAxuVVi7sMnHP6Jn8KwGStnr160XYBJ6CtZiH-bwQ';
-const API_KEY = 'AIzaSyBF3Hp7aYwNXFkz7T96k-NLx3aALegdU0Q'; // Bạn cần thay thế bằng API key của mình
+const API_KEY = 'AIzaSyBF3Hp7aYwNXFkz7T96k-NLx3aALegdU0Q'; // Nên sử dụng restricted API key và cấu hình CORS
 const SHEET_NAME = 'Checkin'; // Thay thế bằng tên sheet của bạn
 
 // Tên cột chứa dữ liệu
@@ -19,6 +19,11 @@ async function loadData() {
         // Đầu tiên, lấy thông tin về các cột (header)
         const headersUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!1:1?key=${API_KEY}`;
         const headersResponse = await fetch(headersUrl);
+        
+        if (!headersResponse.ok) {
+            throw new Error(`Không thể kết nối đến Google Sheets API. Status: ${headersResponse.status}`);
+        }
+        
         const headersData = await headersResponse.json();
         
         if (!headersData.values || headersData.values.length === 0) {
@@ -41,6 +46,11 @@ async function loadData() {
         // Lấy toàn bộ dữ liệu
         const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
         const dataResponse = await fetch(dataUrl);
+        
+        if (!dataResponse.ok) {
+            throw new Error(`Không thể lấy dữ liệu từ Google Sheets. Status: ${dataResponse.status}`);
+        }
+        
         const result = await dataResponse.json();
         
         if (!result.values || result.values.length <= 1) {
@@ -65,14 +75,28 @@ async function loadData() {
         
         console.log('Dữ liệu đã được tải:', sheetData);
         hideLoading();
+        
+        // Hiển thị thông báo thành công
+        showSuccessMessage('Đã tải dữ liệu thành công. Hệ thống sẵn sàng để check-in.');
     } catch (error) {
         console.error('Lỗi khi tải dữ liệu:', error);
         showError({ message: 'Lỗi khi tải dữ liệu: ' + error.message });
     }
 }
 
-// Hàm để cập nhật trạng thái check-in
-async function processCheckIn(phone) {
+// Hàm để hiển thị thông báo thành công
+function showSuccessMessage(message) {
+    const resultHtml = `
+        <div class="success-result">
+            <h3 style="color: #34a853;"><i class="fas fa-check-circle"></i> Thành công</h3>
+            <p>${message}</p>
+        </div>
+    `;
+    showResult(resultHtml);
+}
+
+// Hàm để xử lý tìm kiếm và hiển thị thông tin check-in
+function processCheckIn(phone) {
     showLoading();
     try {
         // Tìm người tham gia trong dữ liệu đã tải
@@ -82,126 +106,47 @@ async function processCheckIn(phone) {
             throw new Error('Không tìm thấy người tham gia với số điện thoại này!');
         }
         
-        // Tìm vị trí (row) của người tham gia trong sheet
-        const participantIndex = sheetData.indexOf(participant);
-        const rowIndex = participantIndex + 2; // +2 vì row 1 là header và index bắt đầu từ 0
-        
-        // Chuẩn bị dữ liệu để cập nhật
+        // Ghi nhận thời gian check-in (chỉ hiển thị, không lưu vào Google Sheets)
         const now = new Date();
         const formattedDate = now.toLocaleDateString('vi-VN') + ' ' + now.toLocaleTimeString('vi-VN');
         
-        // Tạo access token từ OAuth 2.0 (cần thiết lập riêng)
-        const accessToken = await getAccessToken();
-        
-        // Kiểm tra xem các cột check-in có tồn tại không
-        if (columnIndexes[CHECKIN_COLUMN] === undefined) {
-            throw new Error(`Không tìm thấy cột "${CHECKIN_COLUMN}" trong sheet`);
-        }
-        
-        // Cập nhật giá trị check-in
-        const updateRange = `${SHEET_NAME}!${getColumnLetter(columnIndexes[CHECKIN_COLUMN] + 1)}${rowIndex}`;
-        await updateCell(updateRange, 'Đã check-in', accessToken);
-        
-        // Cập nhật thời gian check-in nếu có cột này
-        if (columnIndexes[CHECKIN_TIME_COLUMN] !== undefined) {
-            const timeRange = `${SHEET_NAME}!${getColumnLetter(columnIndexes[CHECKIN_TIME_COLUMN] + 1)}${rowIndex}`;
-            await updateCell(timeRange, formattedDate, accessToken);
-        }
-        
-        // Cập nhật dữ liệu local
-        participant[CHECKIN_COLUMN] = 'Đã check-in';
-        participant[CHECKIN_TIME_COLUMN] = formattedDate;
+        // Kiểm tra xem người này đã check-in chưa
+        const alreadyCheckedIn = participant[CHECKIN_COLUMN] === 'Đã check-in';
+        const checkinTime = participant[CHECKIN_TIME_COLUMN] || 'Chưa có';
         
         // Hiển thị kết quả
-        const resultHtml = `
-            <div class="success-result">
-                <h3 style="color: #34a853;"><i class="fas fa-check-circle"></i> Check-in thành công!</h3>
-                <p><strong>Họ và tên:</strong> ${participant[NAME_COLUMN]}</p>
-                <p><strong>Số điện thoại:</strong> ${participant[PHONE_COLUMN]}</p>
-                <p><strong>Thời gian:</strong> ${formattedDate}</p>
-            </div>
-        `;
+        let resultHtml;
+        
+        if (alreadyCheckedIn) {
+            resultHtml = `
+                <div class="warning-result">
+                    <h3 style="color: #fbbc04;"><i class="fas fa-exclamation-triangle"></i> Đã check-in trước đó!</h3>
+                    <p><strong>Họ và tên:</strong> ${participant[NAME_COLUMN]}</p>
+                    <p><strong>Số điện thoại:</strong> ${participant[PHONE_COLUMN]}</p>
+                    <p><strong>Thời gian check-in:</strong> ${checkinTime}</p>
+                    <p><strong>Lưu ý:</strong> Người này đã được check-in trước đó. Không cần check-in lại.</p>
+                </div>
+            `;
+        } else {
+            resultHtml = `
+                <div class="success-result">
+                    <h3 style="color: #34a853;"><i class="fas fa-check-circle"></i> Tìm thấy thông tin!</h3>
+                    <p><strong>Họ và tên:</strong> ${participant[NAME_COLUMN]}</p>
+                    <p><strong>Số điện thoại:</strong> ${participant[PHONE_COLUMN]}</p>
+                    <p><strong>Thời gian hiện tại:</strong> ${formattedDate}</p>
+                    <p><strong>Trạng thái:</strong> Chưa check-in</p>
+                    <div class="manual-checkin-note">
+                        <p><i class="fas fa-info-circle"></i> Vui lòng ghi nhận thông tin check-in vào hệ thống của bạn.</p>
+                    </div>
+                </div>
+            `;
+        }
+        
         showResult(resultHtml);
     } catch (error) {
         console.error('Lỗi khi check-in:', error);
         showError({ message: 'Lỗi khi check-in: ' + error.message });
     }
-}
-
-// Hàm để chuyển đổi số cột thành chữ cái (1 -> A, 2 -> B, ...)
-function getColumnLetter(column) {
-    let temp, letter = '';
-    while (column > 0) {
-        temp = (column - 1) % 26;
-        letter = String.fromCharCode(temp + 65) + letter;
-        column = (column - temp - 1) / 26;
-    }
-    return letter;
-}
-
-// Hàm để cập nhật một ô trong Google Sheet
-async function updateCell(range, value, accessToken) {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=USER_ENTERED`;
-    
-    const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            values: [[value]]
-        })
-    });
-    
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Lỗi khi cập nhật sheet: ${error.error.message}`);
-    }
-    
-    return await response.json();
-}
-
-// Hàm để lấy access token (bạn cần triển khai phương thức xác thực OAuth 2.0)
-async function getAccessToken() {
-    // Đây là nơi bạn cần triển khai OAuth 2.0 để lấy token
-    // Có thể sử dụng thư viện như gapi hoặc Google Identity Services
-    
-    // Ví dụ sử dụng Google Identity Services
-    return new Promise((resolve, reject) => {
-        // Kiểm tra xem đã có token trong localStorage chưa
-        const savedToken = localStorage.getItem('gsheet_token');
-        if (savedToken) {
-            const tokenData = JSON.parse(savedToken);
-            // Kiểm tra token còn hạn không
-            if (tokenData.expires > Date.now()) {
-                resolve(tokenData.token);
-                return;
-            }
-        }
-        
-        // Nếu chưa có token hoặc token hết hạn, yêu cầu xác thực mới
-        google.accounts.oauth2.initTokenClient({
-            client_id: 'YOUR_CLIENT_ID', // Thay thế bằng client ID của bạn
-            scope: 'https://www.googleapis.com/auth/spreadsheets',
-            callback: (tokenResponse) => {
-                if (tokenResponse.error) {
-                    reject(new Error('Lỗi xác thực: ' + tokenResponse.error));
-                    return;
-                }
-                
-                // Lưu token vào localStorage
-                const expiresIn = tokenResponse.expires_in * 1000;
-                const tokenData = {
-                    token: tokenResponse.access_token,
-                    expires: Date.now() + expiresIn
-                };
-                localStorage.setItem('gsheet_token', JSON.stringify(tokenData));
-                
-                resolve(tokenResponse.access_token);
-            }
-        }).requestAccessToken();
-    });
 }
 
 function switchTab(tabName) {
@@ -306,18 +251,39 @@ function openScanner() {
     var scannerDiv = document.getElementById('scanner');
     if (scannerDiv.style.display === 'none' || !scannerDiv.style.display) {
         scannerDiv.style.display = 'block';
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-            html5QrCode.stop().then((ignore) => {
-                document.getElementById('phoneNumber').value = decodedText;
-                checkInByPhone();
-                scannerDiv.style.display = 'none';
-            }).catch((err) => {
-                console.error("Lỗi khi dừng scanner:", err);
-            });
-        };
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
+        try {
+            const html5QrCode = new Html5Qrcode("qr-reader");
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                html5QrCode.stop().then((ignore) => {
+                    document.getElementById('phoneNumber').value = decodedText;
+                    checkInByPhone();
+                    scannerDiv.style.display = 'none';
+                }).catch((err) => {
+                    console.error("Lỗi khi dừng scanner:", err);
+                });
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                .catch(error => {
+                    console.error("Lỗi khi khởi động camera:", error);
+                    scannerDiv.innerHTML = `
+                        <div class="error-result">
+                            <h3 style="color: #ea4335;">Không thể truy cập camera</h3>
+                            <p>Vui lòng cho phép truy cập camera hoặc sử dụng thiết bị khác.</p>
+                            <button onclick="document.getElementById('scanner').style.display='none'">Đóng</button>
+                        </div>
+                    `;
+                });
+        } catch (error) {
+            console.error("Lỗi khi khởi tạo QR scanner:", error);
+            scannerDiv.innerHTML = `
+                <div class="error-result">
+                    <h3 style="color: #ea4335;">Không thể khởi tạo QR scanner</h3>
+                    <p>${error.message}</p>
+                    <button onclick="document.getElementById('scanner').style.display='none'">Đóng</button>
+                </div>
+            `;
+        }
     } else {
         scannerDiv.style.display = 'none';
     }
@@ -351,14 +317,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Tải dữ liệu khi trang web được tải
-    // Kiểm tra Google API đã được tải chưa
-    if (typeof google !== 'undefined' && google.accounts) {
-        loadData();
-    } else {
-        // Nếu chưa, thêm event listener để đợi API tải xong
-        window.onGoogleScriptLoad = function() {
-            loadData();
-        };
-    }
+    // Thông báo tải dữ liệu
+    showLoading();
+    document.getElementById('result').innerHTML = '<div style="text-align: center; padding: 20px;"><p><i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...</p></div>';
+    
+    // Kiểm tra CORS trước
+    checkCORSAccess()
+        .then(success => {
+            if (success) {
+                loadData();
+            } else {
+                showError({ message: 'Không thể truy cập Google Sheets API do lỗi CORS. Vui lòng kiểm tra cấu hình API key và CORS.' });
+            }
+        });
 });
+
+// Hàm kiểm tra truy cập CORS
+async function checkCORSAccess() {
+    try {
+        const testUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1!A1?key=${API_KEY}`;
+        const response = await fetch(testUrl, { method: 'HEAD' });
+        return response.ok;
+    } catch (error) {
+        console.error('Lỗi kiểm tra CORS:', error);
+        return false;
+    }
+}
