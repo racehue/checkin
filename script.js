@@ -1,12 +1,15 @@
 // --- Configuration ---
 // !!! QUAN TRỌNG: Thay thế bằng URL Web App thực tế của bạn sau khi triển khai Apps Script !!!
-const WEBAPP_URL = 'https://script.google.com/macros/library/d/1kmiI1aZcmnLSksViYm0G5BAZ7Bev_RG_JWaxOk4UK3jYo9ua-_8bkJrc/13';
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwd2dmoqXdXcnZCCNjJLEN6YskOPWDdQYfeRfZDAb1HI5T0liAQ-qnpXkU6iP7HNnA0Aw/exec';
+
+// --- Global State ---
+let qrScanner = null;
 
 function switchTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(function(el) {
+    document.querySelectorAll('.tab-content').forEach(function (el) {
         el.classList.remove('active');
     });
-    document.querySelectorAll('.tab').forEach(function(el) {
+    document.querySelectorAll('.tab').forEach(function (el) {
         el.classList.remove('active');
     });
     document.getElementById(tabName + 'TabContent').classList.add('active');
