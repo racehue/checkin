@@ -1,171 +1,104 @@
-// Define your Apps Script URL
+// URL của Google Apps Script Web App (thay bằng URL thực tế của bạn)
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxb283R_Iqs8Awg1zKCRKwetAC0oEONInlZvA-v56h0AF9_rU4WZ1QYKMqKvK-Tbi_1/exec';
 
-/**
- * Function to handle API calls to Google Apps Script
- * @param {Object} data - The data to send to the API
- * @param {string} method - The HTTP method to use (GET or POST)
- * @returns {Promise} - A promise that resolves with the API response
- */
-async function callApi(data, method = 'POST') {
-  try {
-    // Prepare fetch options
-    const options = {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      mode: 'cors', // Explicitly set CORS mode
-    };
-    
-    let url = SCRIPT_URL;
-    
-    // For POST requests, add the data to the request body
-    if (method === 'POST') {
-      options.body = JSON.stringify(data);
-    } 
-    // For GET requests, add the data to the URL as query parameters
-    else if (method === 'GET') {
-      const params = new URLSearchParams();
-      Object.entries(data).forEach(([key, value]) => {
-        params.append(key, value);
-      });
-      url = `${SCRIPT_URL}?${params.toString()}`;
+// Hàm gọi API chung
+async function callApi(data) {
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+            mode: 'cors'
+        });
+
+        if (!response.ok) throw new Error(`Lỗi HTTP: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        showResult(`Lỗi kết nối: ${error.message}`, 'error');
+        throw error;
     }
-    
-    // Make the API call
-    const response = await fetch(url, options);
-    
-    // If response is not ok, throw an error
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    
-    // Parse and return the response
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error);
-    // Re-throw the error to be handled by the calling function
-    throw error;
-  }
 }
 
-/**
- * Function to perform a check-in
- * @param {string} id - The ID of the person checking in
- * @param {string} type - The type of check-in
- * @returns {Promise} - A promise that resolves with the check-in result
- */
+// Hàm hiển thị kết quả
+function showResult(message, type) {
+    const resultDiv = document.getElementById('result');
+    resultDiv.style.display = 'block';
+    resultDiv.className = `result ${type}-result`;
+    resultDiv.textContent = message;
+}
+
+// Hàm check-in chung
 async function checkIn(id, type) {
-  try {
-    // Show loading indicator
-    document.getElementById('status').textContent = 'Đang xử lý...';
-    
-    const result = await callApi({
-      action: 'checkin',
-      id: id,
-      type: type
-    });
-    
-    // Handle the result
+    if (!id) {
+        showResult('Vui lòng nhập thông tin cần thiết', 'error');
+        return;
+    }
+
+    showResult('Đang xử lý...', 'warning');
+    const result = await callApi({ action: 'checkin', id, type });
+
     if (result.status === 'success') {
-      document.getElementById('status').textContent = result.message;
-      document.getElementById('status').className = 'success';
+        showResult(result.message, 'success');
     } else {
-      document.getElementById('status').textContent = result.message;
-      document.getElementById('status').className = 'error';
+        showResult(result.message || 'Không tìm thấy thông tin', 'error');
     }
-    
-    return result;
-  } catch (error) {
-    document.getElementById('status').textContent = `Lỗi: ${error.message}`;
-    document.getElementById('status').className = 'error';
-    throw error;
-  }
 }
 
-/**
- * Function to check in by name
- */
-function checkInByName() {
-  const nameInput = document.getElementById('name');
-  const name = nameInput.value.trim();
-  
-  if (!name) {
-    document.getElementById('status').textContent = 'Vui lòng nhập tên của bạn';
-    document.getElementById('status').className = 'error';
-    return;
-  }
-  
-  checkIn(name, 'name')
-    .then(() => {
-      // Clear the input field on success
-      nameInput.value = '';
-    })
-    .catch(error => {
-      console.error('Check-in failed:', error);
-    });
+// Check-in bằng số điện thoại
+async function checkInByPhone() {
+    const phoneInput = document.getElementById('phoneNumber');
+    const phone = phoneInput.value.trim();
+    if (phone) {
+        await checkIn(phone, 'phone');
+        phoneInput.value = ''; // Xóa input sau khi thành công
+    } else {
+        showResult('Vui lòng nhập số điện thoại', 'error');
+    }
 }
 
-/**
- * Function to handle commit action
- * @param {Object} data - The data to commit
- * @returns {Promise} - A promise that resolves with the commit result
- */
-async function commitData(data) {
-  try {
-    document.getElementById('status').textContent = 'Đang lưu dữ liệu...';
-    
-    const result = await callApi({
-      action: 'commit',
-      data: data
-    });
-    
-    // Handle the result
-    if (result.status === 'success') {
-      document.getElementById('status').textContent = 'Dữ liệu đã được lưu thành công';
-      document.getElementById('status').className = 'success';
+// Check-in bằng tên
+async function checkInByName() {
+    const nameInput = document.getElementById('participantName');
+    const name = nameInput.value.trim();
+    if (name) {
+        await checkIn(name, 'name');
+        nameInput.value = ''; // Xóa input sau khi thành công
     } else {
-      document.getElementById('status').textContent = `Lỗi: ${result.message}`;
-      document.getElementById('status').className = 'error';
+        showResult('Vui lòng nhập tên', 'error');
     }
-    
-    return result;
-  } catch (error) {
-    document.getElementById('status').textContent = `Lỗi khi lưu dữ liệu: ${error.message}`;
-    document.getElementById('status').className = 'error';
-    throw error;
-  }
 }
 
-// Example of how to use the JSONP fallback if needed
-function checkInJsonp(id, type) {
-  const script = document.createElement('script');
-  const callbackName = 'jsonpCallback_' + Date.now();
-  
-  // Define the callback function
-  window[callbackName] = function(data) {
-    // Handle the response
-    if (data.status === 'success') {
-      document.getElementById('status').textContent = data.message;
-      document.getElementById('status').className = 'success';
-    } else {
-      document.getElementById('status').textContent = `Lỗi: ${data.message}`;
-      document.getElementById('status').className = 'error';
+// Chuyển đổi tab
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    document.getElementById(`${tab}Tab`).classList.add('active');
+    document.getElementById(`${tab}TabContent`).classList.add('active');
+    document.getElementById('result').style.display = 'none'; // Ẩn kết quả khi chuyển tab
+}
+
+// Quét mã QR
+let html5QrcodeScanner;
+function openScanner() {
+    const scannerDiv = document.getElementById('scanner');
+    scannerDiv.style.display = 'block';
+
+    if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner('qr-reader', {
+            fps: 10,
+            qrbox: 250
+        });
+
+        html5QrcodeScanner.render(
+            async (decodedText) => {
+                await checkIn(decodedText, 'phone'); // Giả sử mã QR chứa số điện thoại
+                html5QrcodeScanner.clear();
+                scannerDiv.style.display = 'none';
+            },
+            (error) => {
+                console.warn('QR scan error:', error);
+            }
+        );
     }
-    
-    // Clean up
-    document.head.removeChild(script);
-    delete window[callbackName];
-  };
-  
-  // Create the script URL with parameters
-  const params = new URLSearchParams();
-  params.append('action', 'checkin');
-  params.append('id', id);
-  params.append('type', type);
-  params.append('callback', callbackName);
-  
-  script.src = `${SCRIPT_URL}?${params.toString()}`;
-  document.head.appendChild(script);
 }
