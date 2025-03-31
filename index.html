@@ -1,45 +1,31 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="vi">
 <head>
-    <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <!-- CSS -->
-    <!-- Place your CSS file here -->
+    <title>Check-in Giải Chạy Thủy Biều Jogging 2025</title>
 </head>
-
 <body>
     <div class="background-overlay"></div>
     <div class="gradient-overlay"></div>
-
     <div class="container">
         <div class="flower-decoration flower-top-right"></div>
         <div class="flower-decoration flower-bottom-left"></div>
 
         <header>
-            <div class="header-icon">
-                <i class="fas fa-running"></i>
-            </div>
+            <div class="header-icon"><i class="fas fa-running"></i></div>
             <h1>Check-in Giải Chạy Thủy Biều Jogging</h1>
             <p>Cung đường Thanh Trà 2025</p>
-            <div class="header-badge">
-                <i class="fas fa-map-marker-alt"></i> Huế, Việt Nam
-            </div>
+            <div class="header-badge"><i class="fas fa-map-marker-alt"></i> Huế, Việt Nam</div>
         </header>
 
         <div class="card">
             <div class="tabs">
-                <div id="phoneTab" class="tab active" onclick="switchTab('phone')">
-                    <i class="fas fa-phone-alt"></i> Check-in bằng SĐT
-                </div>
-                <div id="nameTab" class="tab" onclick="switchTab('name')">
-                    <i class="fas fa-user"></i> Check-in bằng Tên
-                </div>
+                <div id="phoneTab" class="tab active" onclick="switchTab('phone')"><i class="fas fa-phone-alt"></i> Check-in bằng SĐT</div>
+                <div id="nameTab" class="tab" onclick="switchTab('name')"><i class="fas fa-user"></i> Check-in bằng Tên</div>
             </div>
 
             <div id="phoneTabContent" class="tab-content active">
@@ -48,45 +34,36 @@
                     <input type="text" id="phoneNumber" placeholder="VD: 0932123456">
                 </div>
                 <div class="button-group">
-                    <button id="checkInBtnPhone" onclick="checkInByPhone()">
-                        <i class="fas fa-check-circle"></i> Check-in
-                    </button>
-                    <button id="scannerBtn" onclick="openScanner()">
-                        <i class="fas fa-qrcode"></i> Quét mã QR
-                    </button>
+                    <button id="checkInBtnPhone" onclick="checkInByPhone()"><i class="fas fa-check-circle"></i> Check-in</button>
+                    <button id="scannerBtn" onclick="openScanner()"><i class="fas fa-qrcode"></i> Quét mã QR</button>
                 </div>
             </div>
 
-            <div id="nameTabContent" class="tab-content">
-                <div class="input-group">
-                    <label for="participantName">Nhập tên người tham gia:</label>
-                    <input type="text" id="participantName" placeholder="VD: Nguyễn Văn A">
-                </div>
-                <div class="button-group">
-                    <button id="checkInBtnName" onclick="checkInByName()">
-                        <i class="fas fa-search"></i> Tìm kiếm & Check-in
-                    </button>
-                </div>
+            <div id="nameTabContent" class```html
+            <div class="input-group">
+                <label for="participantName">Nhập tên người tham gia:</label>
+                <input type="text" id="participantName" placeholder="VD: Nguyễn Văn A">
             </div>
-
-            <div id="result"></div>
+            <div class="button-group">
+                <button id="checkInBtnName" onclick="checkInByName()"><i class="fas fa-search"></i> Tìm kiếm & Check-in</button>
+            </div>
         </div>
 
-        <div class="card qr-scanner" id="scanner" style="display: none;">
-            <h2><i class="fas fa-qrcode"></i> Quét mã QR</h2>
-            <p>Đưa mã QR vào vùng quét bên dưới</p>
-            <div id="qr-reader"></div>
-        </div>
-
-        <div class="footer">
-            <p>© 2025 Hệ thống Check-in được thiết lập bởi HAT from Huew with Love</p>
-        </div>
+        <div id="result"></div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"></script>
-    <!-- Javascript -->
-    <script src="script.js"></script>
-    <!-- Place your Javascript file here -->
-</body>
+    <div class="card qr-scanner" id="scanner" style="display: none;">
+        <h2><i class="fas fa-qrcode"></i> Quét mã QR</h2>
+        <p>Đưa mã QR vào vùng quét bên dưới</p>
+        <div id="qr-reader"></div>
+    </div>
 
+    <div class="footer">
+        <p>© 2025 Hệ thống Check-in được thiết lập bởi HAT from Huew with Love</p>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"></script>
+<script src="script.js"></script>
+</body>
 </html>
