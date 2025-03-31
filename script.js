@@ -27,7 +27,7 @@ function checkInByPhone() {
         return;
     }
     showLoading();
-    processCheckIn(phone, 'phone'); //Thêm type
+    processCheckIn(phone, 'phone');
 }
 
 function checkInByName() {
@@ -37,35 +37,75 @@ function checkInByName() {
         return;
     }
     showLoading();
-    processCheckIn(name, 'name'); //Thêm type
+    processCheckIn(name, 'name');
 }
 
-// Hàm mới để xử lý checkin
-async function processCheckIn(identifier, type) {
+// Cập nhật hàm processCheckIn để sử dụng JSONP - tránh lỗi CORS
+function processCheckIn(identifier, type) {
+    // Hiển thị loading
+    showLoading();
+    
+    // Tạo ID callback duy nhất
+    const callbackName = 'jsonpCallback_' + new Date().getTime();
+    
+    // Tạo URL với tham số
+    const url = `${WEBAPP_URL}?action=${ACTION_CHECKIN}&id=${encodeURIComponent(identifier)}&type=${encodeURIComponent(type)}&callback=${callbackName}`;
+    
+    // Tạo callback function toàn cục
+    window[callbackName] = function(data) {
+        if (data.error) {
+            showError(data.error);
+        } else {
+            showResult(data.message);
+        }
+        
+        // Xóa script và callback function sau khi xử lý
+        document.body.removeChild(script);
+        delete window[callbackName];
+    };
+    
+    // Tạo script element
+    const script = document.createElement('script');
+    script.src = url;
+    script.onerror = function() {
+        showError('Không thể kết nối đến máy chủ. Vui lòng thử lại sau.');
+        document.body.removeChild(script);
+        delete window[callbackName];
+    };
+    
+    // Thêm script vào body để thực thi
+    document.body.appendChild(script);
+}
+
+// Giữ lại hàm fetch POST cũ để tham khảo (nếu bạn đã cấu hình CORS đúng trên Apps Script)
+function processCheckInWithFetch(identifier, type) {
     try {
         // Tạo payload cho POST request
         const payload = {
-            action: 'checkin',  // Cố định action
-            id: identifier,       // Số điện thoại hoặc tên
-            type: type           // Thêm type (phone/name)
+            action: ACTION_CHECKIN,
+            id: identifier,
+            type: type
         };
 
-        const response = await fetch(WEBAPP_URL, {
+        fetch(WEBAPP_URL, {
             method: 'POST',
-            mode: 'cors',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showError(data.error);
+            } else {
+                showResult(data.message);
+            }
+        })
+        .catch(error => {
+            console.error("Fetch error:", error);
+            showError('Lỗi: ' + error.message);
         });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            showResult(data.message);
-        } else {
-            showError(data.error);
-        }
     } catch (error) {
         console.error("Fetch error:", error);
         showError('Lỗi: ' + error.message);
@@ -86,7 +126,6 @@ function showResult(message) {
     document.getElementById('phoneNumber').value = '';
     document.getElementById('participantName').value = '';
 }
-
 
 function showError(error) {
     hideLoading();
