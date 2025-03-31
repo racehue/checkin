@@ -1,203 +1,171 @@
-// --- Configuration ---
-// !!! QUAN TRỌNG: Thay thế bằng URL Web App thực tế của bạn sau khi triển khai Apps Script !!!
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxb283R_Iqs8Awg1zKCRKwetAC0oEONInlZvA-v56h0AF9_rU4WZ1QYKMqKvK-Tbi_1/exec';
+// Define your Apps Script URL
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxb283R_Iqs8Awg1zKCRKwetAC0oEONInlZvA-v56h0AF9_rU4WZ1QYKMqKvK-Tbi_1/exec';
 
-// Constants for Actions
-const ACTION_CHECKIN = "checkin";
-const ACTION_COMMIT = "commit";
-
-// --- Global State ---
-let qrScanner = null;
-
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(function (el) {
-        el.classList.remove('active');
-    });
-    document.querySelectorAll('.tab').forEach(function (el) {
-        el.classList.remove('active');
-    });
-    document.getElementById(tabName + 'TabContent').classList.add('active');
-    document.getElementById(tabName + 'Tab').classList.add('active');
-}
-
-function checkInByPhone() {
-    var phone = document.getElementById('phoneNumber').value.trim();
-    if (!phone) {
-        alert('Vui lòng nhập số điện thoại!');
-        return;
-    }
-    showLoading();
-    processCheckIn(phone, 'phone');
-}
-
-function checkInByName() {
-    var name = document.getElementById('participantName').value.trim();
-    if (!name) {
-        alert('Vui lòng nhập tên người tham gia!');
-        return;
-    }
-    showLoading();
-    processCheckIn(name, 'name');
-}
-
-// Cập nhật hàm processCheckIn để sử dụng JSONP - tránh lỗi CORS
-function processCheckIn(identifier, type) {
-    // Hiển thị loading
-    showLoading();
-    
-    // Tạo ID callback duy nhất
-    const callbackName = 'jsonpCallback_' + new Date().getTime();
-    
-    // Tạo URL với tham số
-    const url = `${WEBAPP_URL}?action=${ACTION_CHECKIN}&id=${encodeURIComponent(identifier)}&type=${encodeURIComponent(type)}&callback=${callbackName}`;
-    
-    // Tạo callback function toàn cục
-    window[callbackName] = function(data) {
-        if (data.error) {
-            showError(data.error);
-        } else {
-            showResult(data.message);
-        }
-        
-        // Xóa script và callback function sau khi xử lý
-        document.body.removeChild(script);
-        delete window[callbackName];
+/**
+ * Function to handle API calls to Google Apps Script
+ * @param {Object} data - The data to send to the API
+ * @param {string} method - The HTTP method to use (GET or POST)
+ * @returns {Promise} - A promise that resolves with the API response
+ */
+async function callApi(data, method = 'POST') {
+  try {
+    // Prepare fetch options
+    const options = {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      mode: 'cors', // Explicitly set CORS mode
     };
     
-    // Tạo script element
-    const script = document.createElement('script');
-    script.src = url;
-    script.onerror = function() {
-        showError('Không thể kết nối đến máy chủ. Vui lòng thử lại sau.');
-        document.body.removeChild(script);
-        delete window[callbackName];
-    };
+    let url = SCRIPT_URL;
     
-    // Thêm script vào body để thực thi
-    document.body.appendChild(script);
-}
-
-// Giữ lại hàm fetch POST cũ để tham khảo (nếu bạn đã cấu hình CORS đúng trên Apps Script)
-function processCheckInWithFetch(identifier, type) {
-    try {
-        // Tạo payload cho POST request
-        const payload = {
-            action: ACTION_CHECKIN,
-            id: identifier,
-            type: type
-        };
-
-        fetch(WEBAPP_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                showError(data.error);
-            } else {
-                showResult(data.message);
-            }
-        })
-        .catch(error => {
-            console.error("Fetch error:", error);
-            showError('Lỗi: ' + error.message);
-        });
-    } catch (error) {
-        console.error("Fetch error:", error);
-        showError('Lỗi: ' + error.message);
+    // For POST requests, add the data to the request body
+    if (method === 'POST') {
+      options.body = JSON.stringify(data);
+    } 
+    // For GET requests, add the data to the URL as query parameters
+    else if (method === 'GET') {
+      const params = new URLSearchParams();
+      Object.entries(data).forEach(([key, value]) => {
+        params.append(key, value);
+      });
+      url = `${SCRIPT_URL}?${params.toString()}`;
     }
+    
+    // Make the API call
+    const response = await fetch(url, options);
+    
+    // If response is not ok, throw an error
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    
+    // Parse and return the response
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error);
+    // Re-throw the error to be handled by the calling function
+    throw error;
+  }
 }
 
-function showResult(message) {
-    hideLoading();
-    var resultDiv = document.getElementById('result');
-    resultDiv.innerHTML =
-        '<div class="success-result">' +
-        '<h3 style="color: #28a745;"><i class="fas fa-check-circle"></i> Thành công</h3>' +
-        '<p>' + message + '</p>' +
-        '</div>';
-    resultDiv.style.display = 'block';
-
-    // Clear input fields
-    document.getElementById('phoneNumber').value = '';
-    document.getElementById('participantName').value = '';
-}
-
-function showError(error) {
-    hideLoading();
-    var resultDiv = document.getElementById('result');
-    resultDiv.innerHTML =
-        '<div class="error-result">' +
-        '<h3 style="color: #ea4335;"><i class="fas fa-exclamation-circle"></i> Lỗi xử lý</h3>' +
-        '<p>' + error + '</p>' +
-        '</div>';
-    resultDiv.style.display = 'block';
-}
-
-function openScanner() {
-    var scannerDiv = document.getElementById('scanner');
-    if (scannerDiv.style.display === 'none') {
-        scannerDiv.style.display = 'block';
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-            html5QrCode.stop().then((ignore) => {
-                document.getElementById('phoneNumber').value = decodedText;
-                checkInByPhone();
-                scannerDiv.style.display = 'none';
-            }).catch((err) => {
-                console.error("Lỗi khi dừng scanner:", err);
-            });
-        };
-        const config = {
-            fps: 10,
-            qrbox: {
-                width: 250,
-                height: 250
-            }
-        };
-        html5QrCode.start({
-            facingMode: "environment"
-        }, config, qrCodeSuccessCallback);
+/**
+ * Function to perform a check-in
+ * @param {string} id - The ID of the person checking in
+ * @param {string} type - The type of check-in
+ * @returns {Promise} - A promise that resolves with the check-in result
+ */
+async function checkIn(id, type) {
+  try {
+    // Show loading indicator
+    document.getElementById('status').textContent = 'Đang xử lý...';
+    
+    const result = await callApi({
+      action: 'checkin',
+      id: id,
+      type: type
+    });
+    
+    // Handle the result
+    if (result.status === 'success') {
+      document.getElementById('status').textContent = result.message;
+      document.getElementById('status').className = 'success';
     } else {
-        scannerDiv.style.display = 'none';
+      document.getElementById('status').textContent = result.message;
+      document.getElementById('status').className = 'error';
     }
+    
+    return result;
+  } catch (error) {
+    document.getElementById('status').textContent = `Lỗi: ${error.message}`;
+    document.getElementById('status').className = 'error';
+    throw error;
+  }
 }
 
-// Add event listeners for Enter key
-document.addEventListener('DOMContentLoaded', function () {
-    // For phone number input
-    document.getElementById('phoneNumber').addEventListener('keypress', function (event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            checkInByPhone();
-        }
+/**
+ * Function to check in by name
+ */
+function checkInByName() {
+  const nameInput = document.getElementById('name');
+  const name = nameInput.value.trim();
+  
+  if (!name) {
+    document.getElementById('status').textContent = 'Vui lòng nhập tên của bạn';
+    document.getElementById('status').className = 'error';
+    return;
+  }
+  
+  checkIn(name, 'name')
+    .then(() => {
+      // Clear the input field on success
+      nameInput.value = '';
+    })
+    .catch(error => {
+      console.error('Check-in failed:', error);
     });
-
-    // For participant name input
-    document.getElementById('participantName').addEventListener('keypress', function (event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            checkInByName();
-        }
-    });
-
-    //Gọi hàm fetchData lần đầu tiên khi trang load
-    // fetchData();
-
-    //Gọi hàm fetchData định kỳ (ví dụ: mỗi 5 giây) để đồng bộ dữ liệu 2 chiều
-    // setInterval(fetchData, 5000);
-});
-
-function showLoading() {
-    document.getElementById('result').innerHTML =
-        '<div style="text-align: center; padding: 20px;"><p><i class="fas fa-spinner fa-spin"></i> Đang xử lý...</p></div>';
-    document.getElementById('result').style.display = 'block';
 }
 
-function hideLoading() {
-    // You can add more sophisticated loading indicators if needed
+/**
+ * Function to handle commit action
+ * @param {Object} data - The data to commit
+ * @returns {Promise} - A promise that resolves with the commit result
+ */
+async function commitData(data) {
+  try {
+    document.getElementById('status').textContent = 'Đang lưu dữ liệu...';
+    
+    const result = await callApi({
+      action: 'commit',
+      data: data
+    });
+    
+    // Handle the result
+    if (result.status === 'success') {
+      document.getElementById('status').textContent = 'Dữ liệu đã được lưu thành công';
+      document.getElementById('status').className = 'success';
+    } else {
+      document.getElementById('status').textContent = `Lỗi: ${result.message}`;
+      document.getElementById('status').className = 'error';
+    }
+    
+    return result;
+  } catch (error) {
+    document.getElementById('status').textContent = `Lỗi khi lưu dữ liệu: ${error.message}`;
+    document.getElementById('status').className = 'error';
+    throw error;
+  }
+}
+
+// Example of how to use the JSONP fallback if needed
+function checkInJsonp(id, type) {
+  const script = document.createElement('script');
+  const callbackName = 'jsonpCallback_' + Date.now();
+  
+  // Define the callback function
+  window[callbackName] = function(data) {
+    // Handle the response
+    if (data.status === 'success') {
+      document.getElementById('status').textContent = data.message;
+      document.getElementById('status').className = 'success';
+    } else {
+      document.getElementById('status').textContent = `Lỗi: ${data.message}`;
+      document.getElementById('status').className = 'error';
+    }
+    
+    // Clean up
+    document.head.removeChild(script);
+    delete window[callbackName];
+  };
+  
+  // Create the script URL with parameters
+  const params = new URLSearchParams();
+  params.append('action', 'checkin');
+  params.append('id', id);
+  params.append('type', type);
+  params.append('callback', callbackName);
+  
+  script.src = `${SCRIPT_URL}?${params.toString()}`;
+  document.head.appendChild(script);
 }
