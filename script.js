@@ -2,9 +2,6 @@
 // !!! QUAN TRỌNG: Thay thế bằng URL Web App thực tế của bạn sau khi triển khai Apps Script !!!
 const WEBAPP_URL = 'https://script.google.com/macros/library/d/1kmiI1aZcmnLSksViYm0G5BAZ7Bev_RG_JWaxOk4UK3jYo9ua-_8bkJrc/13';
 
-// --- Constants ---
-const ACTION_CHECKIN = 'checkin';  // Correct action name to match Apps Script
-
 function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(function(el) {
         el.classList.remove('active');
@@ -23,7 +20,7 @@ function checkInByPhone() {
         return;
     }
     showLoading();
-    processCheckIn(phone);
+    processCheckIn(phone, 'phone'); //Thêm type
 }
 
 function checkInByName() {
@@ -33,17 +30,17 @@ function checkInByName() {
         return;
     }
     showLoading();
-    processCheckIn(name);
+    processCheckIn(name, 'name'); //Thêm type
 }
 
-
-// Hàm processCheckIn đã sửa
-async function processCheckIn(identifier) {
+// Hàm mới để xử lý checkin
+async function processCheckIn(identifier, type) {
     try {
         // Tạo payload cho POST request
         const payload = {
-            action: 'checkin',  // Đảm bảo action trùng khớp với Apps Script
-            id: identifier     // Gửi ID (số điện thoại hoặc tên)
+            action: 'checkin',  // Cố định action
+            id: identifier,       // Số điện thoại hoặc tên
+            type: type           // Thêm type (phone/name)
         };
 
         const response = await fetch(WEBAPP_URL, {
@@ -58,32 +55,31 @@ async function processCheckIn(identifier) {
         const data = await response.json();
 
         if (response.ok) {
-            showResult(data.message); // Hiển thị thông báo thành công từ server
+            showResult(data.message);
         } else {
-            showError(data.error || `Lỗi: ${response.statusText}`);
+            showError(data.error);
         }
-
     } catch (error) {
         console.error("Fetch error:", error);
-        showError(`Lỗi: ${error.message || 'Không xác định'}`);
+        showError('Lỗi: ' + error.message);
     }
 }
 
-function showResult(html) {
+function showResult(message) {
     hideLoading();
     var resultDiv = document.getElementById('result');
-    // if(html.includes('success')) {
-    //   resultDiv.innerHTML = '<div class="success-result">' + html + '</div>';
-    // } else {
-    resultDiv.innerHTML = html;
-    // }
+    resultDiv.innerHTML =
+        '<div class="success-result">' +
+        '<h3 style="color: #28a745;"><i class="fas fa-check-circle"></i> Thành công</h3>' +
+        '<p>' + message + '</p>' +
+        '</div>';
     resultDiv.style.display = 'block';
-    if (document.getElementById('phoneTabContent').classList.contains('active')) {
-        document.getElementById('phoneNumber').value = '';
-    } else {
-        document.getElementById('participantName').value = '';
-    }
+
+    // Clear input fields
+    document.getElementById('phoneNumber').value = '';
+    document.getElementById('participantName').value = '';
 }
+
 
 function showError(error) {
     hideLoading();
