@@ -2,6 +2,10 @@
 // !!! QUAN TRỌNG: Thay thế bằng URL Web App thực tế của bạn sau khi triển khai Apps Script !!!
 const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxb283R_Iqs8Awg1zKCRKwetAC0oEONInlZvA-v56h0AF9_rU4WZ1QYKMqKvK-Tbi_1/exec';
 
+// Constants for Actions
+const ACTION_CHECKIN = "checkin";
+const ACTION_COMMIT = "commit";
+
 // --- Global State ---
 let qrScanner = null;
 
